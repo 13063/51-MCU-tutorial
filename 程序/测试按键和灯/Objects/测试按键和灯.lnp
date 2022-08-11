@@ -1,0 +1,6 @@
+".\Objects\key.obj",
+".\Objects\led.obj",
+".\Objects\public.obj",
+".\Objects\main.obj" 
+TO ".\Objects\测试按键和灯" 
+PRINT(".\Listings\测试按键和灯.m51") RAMSIZE(256) 
