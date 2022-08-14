@@ -134,3 +134,43 @@ void lcdShowNum(uint row,uint pos,unsigned long num)
 		}
 	}
 }
+
+
+void lcdShow0Num(uint row,uint pos,unsigned long num,uchar w)
+{
+	unsigned long i,j,width,k;
+	i=1;j=1;
+	width=1;				//数字的位数
+	if(row==1)
+	{
+		writeCmd(0x80+pos-1);
+		while(num/(i*10)!=0)
+		{
+			i=i*10;
+			width++;	
+		}
+		for(k=w;k>=1;k--)
+		{
+			for(i=1;i<k;i++)
+				j=j*10;
+			lcdWriteData((num/j)%10+'0');
+			j=1;
+		}			
+	}
+	else
+	{
+		writeCmd(0x80+0x40+pos-1);
+		while(num/(i*10)!=0)
+		{
+			i=i*10;
+			width++;	
+		}
+		for(k=w;k>=1;k--)
+		{
+			for(i=1;i<k;i++)
+				j=j*10;
+			lcdWriteData((num/j)%10+'0');
+			j=1;
+		}
+	}
+}

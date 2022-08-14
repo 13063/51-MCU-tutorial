@@ -11,3 +11,8 @@ void Delay1ms(uint c)   //Îó²î 0us
 		 }      
 	}	
 }
+
+void Delay5us()		//@11.0592MHz
+{
+}
+

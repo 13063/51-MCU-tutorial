@@ -1,5 +1,6 @@
 #ifndef _LED_H
 #define _LED_H
+#include  "public.h"
 sbit l0=P0^0;
 sbit l1=P0^1;
 sbit l2=P0^2;
