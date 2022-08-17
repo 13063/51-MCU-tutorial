@@ -1,0 +1,1244 @@
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE GUI
+OBJECT MODULE PLACED IN .\Objects\GUI.obj
+COMPILER INVOKED BY: E:\EE\32\C51\BIN\C51.EXE src\GUI.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\DRIVERS;.\src) DEBUG OBJ
+                    -ECTEXTEND PRINT(.\Listings\GUI.lst) OBJECT(.\Objects\GUI.obj)
+
+line level    source
+
+   1          
+   2          #include <stddef.h>           /* needed for definition of NULL */
+   3          #include "GUI.h"
+   4          #include "ssd1306.h"
+   5          
+   6          GUI_CONTEXT GUI_Context;
+   7          char GUI_DecChar;
+   8          
+   9          int LCD_GetXSize(void)        { return SSD1306_WIDTH; }
+  10          int LCD_GetYSize(void)        { return SSD1306_HEIGHT; }
+  11          int GUI_GetXSize(void)        { return LCD_GetXSize(); }
+  12          int GUI_GetYSize(void)        { return LCD_GetYSize(); }
+  13          void LCD_GetRect(LCD_RECT *pRect) {
+  14   1        pRect->x0 = 0;
+  15   1        pRect->y0 = 0;
+  16   1        pRect->x1 = LCD_GetXSize() - 1;
+  17   1        pRect->y1 = LCD_GetYSize() - 1;
+  18   1      }
+  19          
+  20          int GUI_Init(void) {
+  21   1        GUI_DecChar = '.';
+  22   1              GUI_Context.ClipRect.x0 = 0;
+  23   1              GUI_Context.ClipRect.y0 = 0;
+  24   1              GUI_Context.ClipRect.x1 = LCD_GetXSize() - 1;
+  25   1              GUI_Context.ClipRect.y1 = LCD_GetYSize() - 1;
+  26   1              GUI_Context.DispPosX = 0;
+  27   1              GUI_Context.DispPosY = 0;
+  28   1              GUI_Context.pAFont = GUI_DEFAULT_FONT;
+  29   1              GUI_Context.PenSize = 1;
+  30   1              GUI_Context.DrawColor = GUI_COLOR_WHITE;
+  31   1              
+  32   1              SSD1306_init(); //³õÊ¼»¯OLED
+  33   1              
+  34   1              return 0;
+  35   1      }
+  36          
+  37          const GUI_FONT GUI_UNI_PTR* GUI_SetFont(const GUI_FONT GUI_UNI_PTR * pNewFont) {
+  38   1        const GUI_FONT GUI_UNI_PTR* pOldFont = GUI_Context.pAFont;
+  39   1        GUI_LOCK();
+  40   1        if (pNewFont)
+  41   1          GUI_Context.pAFont = pNewFont;
+  42   1        GUI_UNLOCK();
+  43   1        return pOldFont;
+  44   1      }
+  45          const GUI_FONT GUI_UNI_PTR* GUI_GetFont(void) {
+  46   1        const GUI_FONT GUI_UNI_PTR * r;
+  47   1        GUI_LOCK();
+  48   1        r = GUI_Context.pAFont;
+  49   1        GUI_UNLOCK();
+  50   1        return r;
+  51   1      }
+  52          
+  53          /*********************************************************************
+  54          *
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 2   
+
+  55          *       Static code
+  56          *
+  57          **********************************************************************
+  58          */
+  59          /*********************************************************************
+  60          *
+  61          *       GUIPROP_FindChar
+  62          */
+  63          static const GUI_FONT_PROP GUI_UNI_PTR * GUIPROP_FindChar(const GUI_FONT_PROP GUI_UNI_PTR* pProp, U16P c) 
+             -{
+  64   1        for (; pProp; pProp = pProp->pNext) {
+  65   2          if ((c>=pProp->First) && (c<=pProp->Last))
+  66   2            break;
+  67   2        }
+  68   1        return pProp;
+  69   1      }
+  70          
+  71          /*********************************************************************
+  72          *
+  73          *       Public code
+  74          *
+  75          **********************************************************************
+  76          */
+  77          /*********************************************************************
+  78          *
+  79          *       GUIPROP_DispChar
+  80          *
+  81          * Purpose:
+  82          *   This is the routine that displays a character. It is used by all
+  83          *   other routines which display characters as a subroutine.
+  84          */
+  85          void DrawBitLine1BPP(int x, int y, U8 const*p, int Diff, int xsize)
+  86          {
+  87   1        U8 pixels;
+  88   1              
+  89   1      /*
+  90   1      // Jump to right entry point
+  91   1      */
+  92   1        pixels = *p;
+  93   1      
+  94   1              switch (Diff&7) {
+  95   2              case 0:
+  96   2                      goto WriteBit0;
+  97   2              case 1:
+  98   2                      goto WriteBit1;
+  99   2              case 2:
+ 100   2                      goto WriteBit2;
+ 101   2              case 3:
+ 102   2                      goto WriteBit3;
+ 103   2              case 4:
+ 104   2                      goto WriteBit4;
+ 105   2              case 5:
+ 106   2                      goto WriteBit5;
+ 107   2              case 6:
+ 108   2                      goto WriteBit6;
+ 109   2              case 7:
+ 110   2                      goto WriteBit7;
+ 111   2              }
+ 112   1      
+ 113   1      /*
+ 114   1              Write without transparency
+ 115   1      */
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 3   
+
+ 116   1      
+ 117   1        WriteBit0:
+ 118   1          SSD1306_DrawPixel(x+0, y, (pixels&(1<<7)) ? COLOR_F : COLOR_B);
+*** WARNING C206 IN LINE 118 OF src\GUI.c: 'SSD1306_DrawPixel': missing function-prototype
+*** ERROR C267 IN LINE 118 OF src\GUI.c: 'SSD1306_DrawPixel': requires ANSI-style prototype
+ 119   1          if (!--xsize)
+ 120   1            return;
+ 121   1        WriteBit1:
+ 122   1          SSD1306_DrawPixel(x+1, y, (pixels&(1<<6)) ? COLOR_F : COLOR_B);
+ 123   1          if (!--xsize)
+ 124   1            return;
+ 125   1        WriteBit2:
+ 126   1          SSD1306_DrawPixel(x+2, y, (pixels&(1<<5)) ? COLOR_F : COLOR_B);
+ 127   1          if (!--xsize)
+ 128   1            return;
+ 129   1        WriteBit3:
+ 130   1          SSD1306_DrawPixel(x+3, y, (pixels&(1<<4)) ? COLOR_F : COLOR_B);
+ 131   1          if (!--xsize)
+ 132   1            return;
+ 133   1        WriteBit4:
+ 134   1          SSD1306_DrawPixel(x+4, y, (pixels&(1<<3)) ? COLOR_F : COLOR_B);
+ 135   1          if (!--xsize)
+ 136   1            return;
+ 137   1        WriteBit5:
+ 138   1          SSD1306_DrawPixel(x+5, y, (pixels&(1<<2)) ? COLOR_F : COLOR_B);
+ 139   1          if (!--xsize)
+ 140   1            return;
+ 141   1        WriteBit6:
+ 142   1          SSD1306_DrawPixel(x+6, y, (pixels&(1<<1)) ? COLOR_F : COLOR_B);
+ 143   1          if (!--xsize)
+ 144   1            return;
+ 145   1        WriteBit7:
+ 146   1          SSD1306_DrawPixel(x+7, y, (pixels&(1<<0)) ? COLOR_F : COLOR_B);
+ 147   1          if (!--xsize)
+ 148   1            return;
+ 149   1          x+=8;
+ 150   1          pixels = *(++p);
+ 151   1          goto WriteBit0;
+ 152   1      }
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit1': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit2': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit3': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit4': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit5': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit6': undefined label
+*** ERROR C233 IN LINE 152 OF src\GUI.c: 'WriteBit7': undefined label
+ 153          
+ 154          void LCD_L0_DrawBitmap1BPP(     int x0, int y0, int xsize, int ysize,
+ 155                                                                                                                          int BytesPerLine, const U8* pData, int Diff){
+ 156   1        int i;
+ 157   1              for (i = 0; i < ysize; i++)
+ 158   1              {
+ 159   2                      DrawBitLine1BPP(x0, i+y0, pData, Diff, xsize);
+ 160   2                      pData += BytesPerLine;
+ 161   2              }
+ 162   1      }
+ 163          
+ 164          void LCD_DrawBitmap1BPP(        int x0, int y0, int xsize, int ysize, 
+ 165                                                                                                                  int BytesPerLine, const U8 GUI_UNI_PTR * pPixel){
+ 166   1        int x1, y1;int Diff;
+ 167   1        /* Handle the optional Y-magnification */
+ 168   1        y1 = y0 + ysize - 1;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 4   
+
+ 169   1        x1 = x0 + xsize - 1;
+ 170   1      /*  Handle BITMAP without magnification */
+ 171   1              
+ 172   1              /*  Clip y0 (top) */
+ 173   1              Diff = GUI_Context.ClipRect.y0 - y0;
+ 174   1              if (Diff > 0) {
+ 175   2                      ysize -= Diff;
+ 176   2                      if (ysize <= 0) {
+ 177   3                              return;
+ 178   3                      }
+ 179   2                      y0 = GUI_Context.ClipRect.y0;
+ 180   2                      pPixel += (unsigned)Diff * (unsigned)BytesPerLine;
+ 181   2              }
+ 182   1              /*  Clip y1 (bottom) */
+ 183   1              Diff = y1 - GUI_Context.ClipRect.y1;
+ 184   1              if (Diff > 0) {
+ 185   2                      ysize -= Diff;
+ 186   2                      if (ysize <= 0) {
+ 187   3                              return;
+ 188   3                      }
+ 189   2              }
+ 190   1              /*        Clip right side    */
+ 191   1              Diff = x1 - GUI_Context.ClipRect.x1;
+ 192   1              if (Diff > 0) {
+ 193   2                      xsize -= Diff;
+ 194   2              }
+ 195   1              /*        Clip left side ... (The difficult side ...)    */
+ 196   1              Diff = 0;
+ 197   1              if (x0 < GUI_Context.ClipRect.x0) {
+ 198   2                      Diff = GUI_Context.ClipRect.x0 - x0;
+ 199   2                      xsize -= Diff;
+ 200   2                      pPixel += (Diff>>3); 
+ 201   2                      x0 += (Diff>>3)<<3; 
+ 202   2                      Diff &=7;
+ 203   2              }
+ 204   1              if (xsize <=0) {
+ 205   2                      return;
+ 206   2              }
+ 207   1              LCD_L0_DrawBitmap1BPP(x0, y0, xsize, ysize, BytesPerLine, pPixel, Diff);
+ 208   1      }
+ 209          
+ 210          void GUIPROP_DispChar(U16P c) {
+ 211   1        int BytesPerLine;
+ 212   1        const GUI_FONT_PROP GUI_UNI_PTR * pProp = GUIPROP_FindChar(GUI_Context.pAFont->p.pProp, c);
+ 213   1        if (pProp) {
+ 214   2          const GUI_CHARINFO GUI_UNI_PTR * pCharInfo = pProp->paCharInfo+(c-pProp->First);
+ 215   2          BytesPerLine = pCharInfo->BytesPerLine;
+ 216   2          LCD_DrawBitmap1BPP( GUI_Context.DispPosX, GUI_Context.DispPosY,
+ 217   2                                                                                                      pCharInfo->XSize, GUI_Context.pAFont->YSize,
+ 218   2                                                                                                      BytesPerLine, pCharInfo->pData);
+ 219   2          /* Fill empty pixel lines */
+ 220   2          if (GUI_Context.pAFont->YDist > GUI_Context.pAFont->YSize) {
+ 221   3            int YDist = GUI_Context.pAFont->YDist;
+ 222   3            int YSize = GUI_Context.pAFont->YSize;
+ 223   3              SSD1306_DrawFilledRectangle(GUI_Context.DispPosX, 
+ 224   3                           GUI_Context.DispPosY + YSize, 
+ 225   3                           GUI_Context.DispPosX + pCharInfo->XSize, 
+ 226   3                           GUI_Context.DispPosY + YDist, COLOR_B);
+ 227   3          }
+ 228   2          GUI_Context.DispPosX += pCharInfo->XDist * GUI_Context.pAFont->XMag;
+ 229   2        }
+ 230   1      }
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 5   
+
+ 231          
+ 232          /*********************************************************************
+ 233          *
+ 234          *       GUIPROP_GetCharDistX
+ 235          */
+ 236          int GUIPROP_GetCharDistX(U16P c) {
+ 237   1        const GUI_FONT_PROP GUI_UNI_PTR * pProp = GUIPROP_FindChar(GUI_Context.pAFont->p.pProp, c);
+ 238   1        return (pProp) ? (pProp->paCharInfo+(c-pProp->First))->XSize * GUI_Context.pAFont->XMag : 0;
+ 239   1      }
+ 240          
+ 241          /*********************************************************************
+ 242          *
+ 243          *       GUIPROP_GetFontInfo
+ 244          */
+ 245          void GUIPROP_GetFontInfo(const GUI_FONT GUI_UNI_PTR * pFont, GUI_FONTINFO* pfi) {
+ 246   1        pfi->Flags = GUI_FONTINFO_FLAG_PROP;
+ 247   1      }
+ 248          
+ 249          /*********************************************************************
+ 250          *
+ 251          *       GUIPROP_IsInFont
+ 252          */
+ 253          char GUIPROP_IsInFont(const GUI_FONT GUI_UNI_PTR * pFont, U16 c) {
+ 254   1        const GUI_FONT_PROP GUI_UNI_PTR * pProp = GUIPROP_FindChar(pFont->p.pProp, c);
+ 255   1        return (pProp==NULL) ? 0 : 1;
+ 256   1      }
+ 257          
+ 258          /*********************************************************************
+ 259          *
+ 260          *       GUI_GetFontDistY
+ 261          */
+ 262          int GUI_GetFontDistY(void) {
+ 263   1        int r;
+ 264   1        GUI_LOCK();
+ 265   1        r = GUI_Context.pAFont->YDist;
+ 266   1        GUI_UNLOCK();
+ 267   1        return r;
+ 268   1      }
+ 269          
+ 270          /*********************************************************************
+ 271          *
+ 272          *       GUI_GetCharDistX
+ 273          */
+ 274          int GUI_GetCharDistX(U16 c) {
+ 275   1        int r;
+ 276   1        GUI_LOCK();
+ 277   1        r = GUI_Context.pAFont->pfGetCharDistX(c);
+ 278   1        GUI_UNLOCK();
+ 279   1        return r;
+ 280   1      }
+ 281          
+ 282          void GUI_DispNextLine(void) {
+ 283   1        GUI_LOCK();
+ 284   1        GUI_Context.DispPosY += GUI_GetFontDistY();
+ 285   1        GUI_UNLOCK();
+ 286   1      }
+ 287          
+ 288          /*********************************************************************
+ 289          *
+ 290          *       GL_DispChar
+ 291          */
+ 292          void GL_DispChar(U16 c) {
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 6   
+
+ 293   1        /* check for control characters */
+ 294   1        if (c == '\n') {
+ 295   2          GUI_DispNextLine();
+ 296   2        } else {
+ 297   2          if (c != '\r') {
+ 298   3            GUI_LOCK();
+ 299   3            GUI_Context.pAFont->pfDispChar(c);
+ 300   3            GUI_UNLOCK();
+ 301   3          }
+ 302   2        }
+ 303   1      }
+ 304          
+ 305          /*********************************************************************
+ 306          *
+ 307          *       GUI_GetYAdjust
+ 308          *
+ 309          * Returns adjustment in vertical (Y) direction
+ 310          *
+ 311          * Note: The return value needs to be subtracted from
+ 312          *       the y-position of the character.
+ 313          */
+ 314          int GUI_GetYAdjust(void) {
+ 315   1        int r = 0;
+ 316   1        GUI_LOCK();
+ 317   1        switch (GUI_Context.TextAlign & GUI_TA_VERTICAL) {
+ 318   2              case GUI_TA_BOTTOM:
+ 319   2                      r = GUI_Context.pAFont->YSize - 1;
+ 320   2          break;
+ 321   2              case GUI_TA_VCENTER:
+ 322   2                      r = GUI_Context.pAFont->YSize / 2;
+ 323   2          break;
+ 324   2              case GUI_TA_BASELINE:
+ 325   2                      r = GUI_Context.pAFont->YSize / 2;
+ 326   2              }
+ 327   1        GUI_UNLOCK();
+ 328   1        return r;
+ 329   1      }
+ 330          
+ 331          /*********************************************************************
+ 332          *
+ 333          *       _GotoY
+ 334          */
+ 335          static char _GotoY(int y) {
+ 336   1        GUI_Context.DispPosY = y;
+ 337   1        return 0;
+ 338   1      }
+ 339          
+ 340          /*********************************************************************
+ 341          *
+ 342          *       _GotoX
+ 343          */
+ 344          static char _GotoX(int x) {
+ 345   1        GUI_Context.DispPosX = x;
+ 346   1        return 0;
+ 347   1      }
+ 348          
+ 349          /*********************************************************************
+ 350          *
+ 351          *       GUI_GotoY
+ 352          */
+ 353          char GUI_GotoY(int y) {
+ 354   1        char r;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 7   
+
+ 355   1        GUI_LOCK();
+ 356   1        r = _GotoY(y);
+ 357   1        GUI_UNLOCK();
+ 358   1        return r;
+ 359   1      }
+ 360          
+ 361          /*********************************************************************
+ 362          *
+ 363          *       GUI_GotoX
+ 364          */
+ 365          char GUI_GotoX(int x) {
+ 366   1        char r;
+ 367   1        GUI_LOCK();
+ 368   1        r = _GotoX(x);
+ 369   1        GUI_UNLOCK();
+ 370   1        return r;
+ 371   1      }
+ 372          
+ 373          /*********************************************************************
+ 374          *
+ 375          *       GUI_GotoXY
+ 376          */
+ 377          char GUI_GotoXY(int x, int y) {
+ 378   1        char r;
+ 379   1        GUI_LOCK();
+ 380   1        r  = _GotoX(x);
+ 381   1        r |= _GotoY(y);
+ 382   1        GUI_UNLOCK();
+ 383   1        return r;
+ 384   1      }
+ 385          
+ 386          void GUI_ClearRect(int x0, int y0, int x1, int y1) {
+ 387   1        GUI_LOCK();
+ 388   1        SSD1306_DrawFilledRectangle(x0,y0,x1,y1, GUI_COLOR_BLACK);
+ 389   1        GUI_UNLOCK();
+ 390   1      }
+ 391          
+ 392          void GUI_Clear(void) {
+ 393   1        GUI_GotoXY(0,0);     /* Reset text cursor to upper left */
+ 394   1        GUI_ClearRect(0, 0, GUI_GetXSize(), GUI_GetYSize());
+ 395   1      }
+ 396          
+ 397          void GUI_DispCEOL(void) {
+ 398   1        int y = GUI_Context.DispPosY - GUI_GetYAdjust();
+ 399   1        GUI_ClearRect(GUI_Context.DispPosX, y, 4000,             /* Max pos x */
+ 400   1                      y + GUI_Context.pAFont->YDist - 1);
+ 401   1      }
+ 402          
+ 403          void GUI_DispChar(U16 c) {
+ 404   1        GUI_LOCK();
+ 405   1        GL_DispChar(c);
+ 406   1        GUI_UNLOCK();
+ 407   1      }
+ 408          
+ 409          void GUI_DispCharAt(U16 c, I16P x, I16P y) {
+ 410   1        GUI_LOCK();
+ 411   1        GUI_Context.DispPosX = x;
+ 412   1        GUI_Context.DispPosY = y;
+ 413   1              GL_DispChar(c);
+ 414   1        GUI_UNLOCK();
+ 415   1      }
+ 416          
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 8   
+
+ 417          ///////////////////////////////////////////////////////////////////////
+ 418          /*********************************************************************
+ 419          *
+ 420          *       Static code
+ 421          *
+ 422          **********************************************************************
+ 423          */
+ 424          /*********************************************************************
+ 425          *
+ 426          *       DB2SJIS
+ 427          */
+ 428          static U16 DB2SJIS(U8 Byte0, U8 Byte1) {
+ 429   1        return Byte1 | (((U16)Byte0)<<8);
+ 430   1      }
+ 431          
+ 432          /*********************************************************************
+ 433          *
+ 434          *       _GetLineDistX_SJIS
+ 435          */
+ 436          static int _GetLineDistX_SJIS(const char GUI_UNI_PTR *s, int Len) {
+ 437   1        int Dist =0;
+ 438   1        if (s) {
+ 439   2          U8 c0;
+ 440   2          while (((c0=*(const U8*)s) !=0) && Len >=0) {
+ 441   3            s++; Len--;
+ 442   3            if (c0 > 127) {
+ 443   4              U8  c1 = *(const U8*)s++;
+ 444   4              Len--;
+ 445   4              Dist += GUI_GetCharDistX(DB2SJIS(c0, c1));
+ 446   4            } else {
+ 447   4              Dist += GUI_GetCharDistX(c0);
+ 448   4            }
+ 449   3          }
+ 450   2        }
+ 451   1        return Dist;
+ 452   1      }
+ 453          
+ 454          /*********************************************************************
+ 455          *
+ 456          *       _GetLineLen_SJIS
+ 457          * Purpose:
+ 458          *   Returns the number of characters in a string.
+ 459          *
+ 460          * NOTE:
+ 461          *   The return value can be used as offset into the
+ 462          *   string, which means that double characters count double
+ 463          */
+ 464          static int _GetLineLen_SJIS(const char GUI_UNI_PTR *s, int MaxLen) {
+ 465   1        int Len =0;
+ 466   1        U8 c0;
+ 467   1        while (((c0=*(const U8*)s) !=0) && Len < MaxLen) {
+ 468   2          s++;
+ 469   2          if (c0 > 127) {
+ 470   3            Len++; s++;
+ 471   3          } else {
+ 472   3            switch (c0) {
+ 473   4            case '\n': return Len;
+ 474   4            }
+ 475   3          }
+ 476   2          Len++;
+ 477   2        }
+ 478   1        return Len;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 9   
+
+ 479   1      }
+ 480          
+ 481          /*********************************************************************
+ 482          *
+ 483          *       _DispLine_SJIS
+ 484          */
+ 485          static void _DispLine_SJIS(const char GUI_UNI_PTR *s, int Len) {
+ 486   1        U8 c0;
+ 487   1        while (--Len >=0) {
+ 488   2          c0=*(const U8*)s++;
+ 489   2          if (c0 > 127) {
+ 490   3            U8  c1 = *(const U8*)s++;
+ 491   3            Len--;
+ 492   3            GL_DispChar (DB2SJIS(c0, c1));
+ 493   3          } else {
+ 494   3            GL_DispChar(c0);
+ 495   3          }
+ 496   2        }
+ 497   1      }
+ 498          ///////////////////////////////////////////////////////////////////////
+ 499          
+ 500          static U16 _GetCharCode(const char GUI_UNI_PTR * s) {
+ 501   1        return *(const U8 GUI_UNI_PTR *)s;
+ 502   1      }
+ 503          static int _GetCharSize(const char GUI_UNI_PTR * s) {
+ 504   1        return 1;
+ 505   1      }
+ 506          int GUI_UC_GetCharSize(const char GUI_UNI_PTR * s) {
+ 507   1        int r;
+ 508   1        GUI_LOCK();
+ 509   1        r =  _GetCharSize(s);
+ 510   1        GUI_UNLOCK();
+ 511   1        return r;
+ 512   1      }
+ 513          
+ 514          U16 GUI_UC_GetCharCode(const char GUI_UNI_PTR * s) {
+ 515   1        U16 r;
+ 516   1        GUI_LOCK();
+ 517   1        r =  _GetCharCode(s);
+ 518   1        GUI_UNLOCK();
+ 519   1        return r;
+ 520   1      }
+ 521          
+ 522          U16 GUI_UC__GetCharCodeInc(const char GUI_UNI_PTR ** ps) {
+ 523   1        const char GUI_UNI_PTR * s;
+ 524   1        U16 r;
+ 525   1        s   = *ps;
+ 526   1        r   = _GetCharCode(s);
+ 527   1        s  += _GetCharSize(s);
+ 528   1        *ps = s;
+ 529   1        return r;
+ 530   1      }
+ 531          int GUI_UC__NumChars2NumBytes(const char GUI_UNI_PTR * s, int NumChars) {
+ 532   1        int CharSize, NumBytes = 0;
+ 533   1        while (NumChars--) {
+ 534   2          CharSize = _GetCharSize(s);
+ 535   2          s += CharSize;    
+ 536   2          NumBytes += CharSize;
+ 537   2        }
+ 538   1        return NumBytes;
+ 539   1      }
+ 540          int GUI_UC__NumBytes2NumChars(const char GUI_UNI_PTR * s, int NumBytes) {
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 10  
+
+ 541   1        int CharSize, Chars = 0, Bytes = 0;
+ 542   1        while (NumBytes > Bytes) {
+ 543   2          CharSize = _GetCharSize(s + Bytes);
+ 544   2          Bytes += CharSize;
+ 545   2          Chars++;
+ 546   2        }
+ 547   1        return Chars;
+ 548   1      }
+ 549          
+ 550          /*********************************************************************
+ 551          *
+ 552          *       _DispLine
+ 553          */
+ 554          static void _DispLine(const char GUI_UNI_PTR *s, int MaxNumChars, const GUI_RECT *pRect) {
+ 555   1        /* Check if we have anything to do at all ... */
+ 556   1              _DispLine_SJIS(s, MaxNumChars);
+ 557   1      }
+ 558          
+ 559          /*********************************************************************
+ 560          *
+ 561          *       GUI__GetLineNumChars
+ 562          */
+ 563          int GUI__GetLineNumChars(const char GUI_UNI_PTR *s, int MaxNumChars) {
+ 564   1        return _GetLineLen_SJIS(s, MaxNumChars);;
+ 565   1      }
+ 566          
+ 567          int GUI__GetLineDistX(const char GUI_UNI_PTR *s, int MaxNumChars) {
+ 568   1        return _GetLineDistX_SJIS(s, MaxNumChars);;
+ 569   1      }
+ 570          
+ 571          /*********************************************************************
+ 572          *
+ 573          *       GUI__DispLine
+ 574          */
+ 575          void GUI__DispLine(const char GUI_UNI_PTR *s, int MaxNumChars, const GUI_RECT* pr) {
+ 576   1        GUI_RECT r;
+ 577   1        {
+ 578   2          r = *pr;
+ 579   2                      GUI_Context.DispPosX = r.x0;
+ 580   2                      GUI_Context.DispPosY = r.y0;
+ 581   2                      /* Do the actual drawing via routine call. */
+ 582   2                      _DispLine(s, MaxNumChars, &r);
+ 583   2        }
+ 584   1      }
+ 585          
+ 586          void GUI_DispString(const char GUI_UNI_PTR *s) {
+ 587   1        int xAdjust, yAdjust, xOrg;
+ 588   1        int FontSizeY;
+ 589   1        if (!s)
+ 590   1          return;
+ 591   1        GUI_LOCK();
+ 592   1        FontSizeY = GUI_GetFontDistY();
+ 593   1        xOrg = GUI_Context.DispPosX;
+ 594   1       /* Adjust vertical position */
+ 595   1        yAdjust = GUI_GetYAdjust();
+ 596   1        GUI_Context.DispPosY -= yAdjust;
+ 597   1        for (; *s; s++) {
+ 598   2          GUI_RECT r;
+ 599   2          int LineNumChars = GUI__GetLineNumChars(s, 0x7fff);
+ 600   2          int xLineSize    = GUI__GetLineDistX(s, LineNumChars);
+ 601   2        /* Check if x-position needs to be changed due to h-alignment */
+ 602   2          switch (GUI_Context.TextAlign & GUI_TA_HORIZONTAL) { 
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 11  
+
+ 603   3            case GUI_TA_CENTER: xAdjust = xLineSize / 2; break;
+ 604   3            case GUI_TA_RIGHT:  xAdjust = xLineSize; break;
+ 605   3            default:            xAdjust = 0;
+ 606   3          }
+ 607   2          r.x0 = GUI_Context.DispPosX -= xAdjust;
+ 608   2          r.x1 = r.x0 + xLineSize - 1;    
+ 609   2          r.y0 = GUI_Context.DispPosY;
+ 610   2          r.y1 = r.y0 + FontSizeY - 1;    
+ 611   2          GUI__DispLine(s, LineNumChars, &r);
+ 612   2          GUI_Context.DispPosY = r.y0;
+ 613   2          s += GUI_UC__NumChars2NumBytes(s, LineNumChars);
+ 614   2          if ((*s == '\n') || (*s == '\r')) {
+ 615   3            switch (GUI_Context.TextAlign & GUI_TA_HORIZONTAL) { 
+ 616   4            case GUI_TA_CENTER:
+ 617   4            case GUI_TA_RIGHT:
+ 618   4              GUI_Context.DispPosX = xOrg;
+ 619   4              break;
+ 620   4            default:
+ 621   4              GUI_Context.DispPosX = 0;
+ 622   4              break;
+ 623   4            }
+ 624   3            if (*s == '\n')
+ 625   3              GUI_Context.DispPosY += FontSizeY;
+ 626   3          } else {
+ 627   3            GUI_Context.DispPosX = r.x0 + xLineSize;
+ 628   3          }
+ 629   2          if (*s == 0)    /* end of string (last line) reached ? */
+ 630   2            break;
+ 631   2        }
+ 632   1        GUI_Context.DispPosY += yAdjust;
+ 633   1        GUI_Context.TextAlign &= ~GUI_TA_HORIZONTAL;
+ 634   1        GUI_UNLOCK();
+ 635   1      }
+ 636          
+ 637          void GUI_DispStringAt(const char GUI_UNI_PTR *s, int x, int y) {
+ 638   1        GUI_LOCK();
+ 639   1        GUI_Context.DispPosX = x;
+ 640   1        GUI_Context.DispPosY = y;
+ 641   1        GUI_DispString(s);
+ 642   1        GUI_UNLOCK();
+ 643   1      }
+ 644          
+ 645          int GUI_SetTextAlign(int Align) {
+ 646   1        int r;
+ 647   1        GUI_LOCK();
+ 648   1        r = GUI_Context.TextAlign;
+ 649   1        GUI_Context.TextAlign = Align;
+ 650   1        GUI_UNLOCK();
+ 651   1        return r;
+ 652   1      }
+ 653          
+ 654          void GUI_DispStringHCenterAt(const char GUI_UNI_PTR *s, int x, int y) {
+ 655   1        int Align;
+ 656   1        Align = GUI_SetTextAlign((GUI_Context.TextAlign & ~GUI_TA_LEFT) | GUI_TA_CENTER);
+ 657   1        GUI_DispStringAt(s, x, y);
+ 658   1        GUI_SetTextAlign(Align);
+ 659   1      }
+ 660          
+ 661          int GUI_GetFontSizeY(void) {
+ 662   1        int r;
+ 663   1        GUI_LOCK();
+ 664   1        r = GUI_Context.pAFont->YSize;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 12  
+
+ 665   1        GUI_UNLOCK();
+ 666   1        return r;
+ 667   1      }
+ 668          
+ 669          void GUI_GetClientRect(GUI_RECT* pRect) {
+ 670   1        if (!pRect)
+ 671   1          return;
+ 672   1              pRect->x0 = 0;
+ 673   1              pRect->y0 = 0;
+ 674   1              pRect->x1 = LCD_GetXSize();
+ 675   1              pRect->y1 = LCD_GetYSize();
+ 676   1      }
+ 677          
+ 678          int GUI__HandleEOLine(const char GUI_UNI_PTR **ps) {
+ 679   1        const char GUI_UNI_PTR *s = *ps;
+ 680   1        char c = *s++;
+ 681   1        if (c == 0) {
+ 682   2          return 1;
+ 683   2        }
+ 684   1        if (c == '\n') {
+ 685   2          *ps = s;
+ 686   2        }
+ 687   1        return 0;
+ 688   1      }
+ 689          
+ 690          void GUI__DispStringInRect(const char GUI_UNI_PTR *s, GUI_RECT* pRect, int TextAlign, int MaxNumChars) {
+ 691   1        GUI_RECT r;
+ 692   1        GUI_RECT rLine;
+ 693   1        int y = 0;
+ 694   1        const char GUI_UNI_PTR *sOrg =s;
+ 695   1        int FontYSize;
+ 696   1        int xLine = 0;
+ 697   1        int LineLen;
+ 698   1        int NumCharsRem;           /* Number of remaining characters */
+ 699   1        FontYSize = GUI_GetFontSizeY();
+ 700   1        if (pRect) {
+ 701   2          r = *pRect;
+ 702   2        } else {
+ 703   2          GUI_GetClientRect(&r);
+ 704   2        }
+ 705   1        /* handle vertical alignment */
+ 706   1        if ((TextAlign & GUI_TA_VERTICAL) == GUI_TA_TOP) {
+ 707   2                      y = r.y0;
+ 708   2        } else {
+ 709   2          int NumLines;
+ 710   2          /* Count the number of lines */
+ 711   2          for (NumCharsRem = MaxNumChars, NumLines = 1; NumCharsRem ;NumLines++) {
+ 712   3            LineLen = GUI__GetLineNumChars(s, NumCharsRem);
+ 713   3            NumCharsRem -= LineLen;
+ 714   3            s += GUI_UC__NumChars2NumBytes(s, LineLen);
+ 715   3            if (GUI__HandleEOLine(&s))
+ 716   3              break;
+ 717   3          }
+ 718   2          /* Do the vertical alignment */
+ 719   2          switch (TextAlign & GUI_TA_VERTICAL) {
+ 720   3                case GUI_TA_BASELINE:
+ 721   3                case GUI_TA_BOTTOM:
+ 722   3                y = r.y1 -NumLines * FontYSize+1;
+ 723   3            break;
+ 724   3                case GUI_TA_VCENTER:
+ 725   3                        y = r.y0+(r.y1-r.y0+1 -NumLines * FontYSize) /2;
+ 726   3            break;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 13  
+
+ 727   3                }
+ 728   2        }
+ 729   1        /* Output string */
+ 730   1        for (NumCharsRem = MaxNumChars, s = sOrg; NumCharsRem;) {
+ 731   2          int xLineSize;
+ 732   2          LineLen = GUI__GetLineNumChars(s, NumCharsRem);
+ 733   2          NumCharsRem -= LineLen;
+ 734   2          xLineSize = GUI__GetLineDistX(s, LineLen);
+ 735   2          switch (TextAlign & GUI_TA_HORIZONTAL) {
+ 736   3          case GUI_TA_HCENTER:
+ 737   3            xLine = r.x0+(r.x1-r.x0-xLineSize)/2; break;
+ 738   3          case GUI_TA_LEFT:
+ 739   3            xLine = r.x0; break;
+ 740   3          case GUI_TA_RIGHT:
+ 741   3            xLine = r.x1 -xLineSize + 1;
+ 742   3          }
+ 743   2          rLine.x0 = GUI_Context.DispPosX = xLine;
+ 744   2          rLine.x1 = rLine.x0 + xLineSize-1;
+ 745   2          rLine.y0 = GUI_Context.DispPosY = y;
+ 746   2          rLine.y1 = y + FontYSize-1;
+ 747   2          GUI__DispLine(s, LineLen, &rLine);
+ 748   2          s += GUI_UC__NumChars2NumBytes(s, LineLen);
+ 749   2          y += GUI_GetFontDistY();
+ 750   2          if (GUI__HandleEOLine(&s))
+ 751   2            break;
+ 752   2        }
+ 753   1      }
+ 754          
+ 755          #define MIN(v0,v1) ((v0>v1) ? v1 : v0)
+ 756          #define MAX(v0,v1) ((v0>v1) ? v0 : v1)
+ 757          
+ 758          int GUI__IntersectRects(GUI_RECT* pDest, const GUI_RECT* pr0, const GUI_RECT* pr1) {
+ 759   1        pDest->x0 = MAX (pr0->x0, pr1->x0);
+ 760   1        pDest->y0 = MAX (pr0->y0, pr1->y0);
+ 761   1        pDest->x1 = MIN (pr0->x1, pr1->x1);
+ 762   1        pDest->y1 = MIN (pr0->y1, pr1->y1);
+ 763   1        if (pDest->x1 < pDest->x0) {
+ 764   2          return 0;
+ 765   2        }
+ 766   1        if (pDest->y1 < pDest->y0) {
+ 767   2          return 0;
+ 768   2        }
+ 769   1        return 1;
+ 770   1      }
+ 771          void LCD_SetClipRectEx(const GUI_RECT* pRect) {
+ 772   1        LCD_RECT r;
+ 773   1        LCD_GetRect(&r);
+ 774   1        GUI__IntersectRects(&GUI_Context.ClipRect, pRect, &r);
+ 775   1      }
+ 776          
+ 777          void GUI_DispStringInRectMax(const char GUI_UNI_PTR *s, GUI_RECT* pRect, int TextAlign, int MaxLen) {
+ 778   1        GUI_RECT Rect_Old, r;
+ 779   1        if (s && pRect) {
+ 780   2          GUI_LOCK();
+ 781   2          Rect_Old = GUI_Context.ClipRect;
+ 782   2          GUI__IntersectRects(&r, pRect, &Rect_Old);
+ 783   2          LCD_SetClipRectEx(&r);
+ 784   2          GUI__DispStringInRect(s, pRect, TextAlign, MaxLen);
+ 785   2          LCD_SetClipRectEx(&Rect_Old);
+ 786   2          GUI_UNLOCK();
+ 787   2        }
+ 788   1      }
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 14  
+
+ 789          void GUI_DispStringInRect(const char GUI_UNI_PTR *s, GUI_RECT* pRect, int TextAlign) {
+ 790   1        GUI_DispStringInRectMax(s, pRect, TextAlign, 0x7fff);
+ 791   1      }
+ 792          
+ 793          void GUI_DispStringLen(const char GUI_UNI_PTR *s, int MaxNumChars) {
+ 794   1        U16 Char;
+ 795   1        GUI_LOCK();
+ 796   1        while (MaxNumChars && ((Char = GUI_UC__GetCharCodeInc(&s)) != 0)) {
+ 797   2          GUI_DispChar(Char);
+ 798   2          MaxNumChars--;
+ 799   2        }
+ 800   1        while (MaxNumChars--) {
+ 801   2          GUI_DispChar(' ');
+ 802   2        }
+ 803   1        GUI_UNLOCK();
+ 804   1      }
+ 805          /*********************************************************************
+ 806          *
+ 807          *       GUI_GetTextExtend
+ 808          */
+ 809          void GUI_GetTextExtend(GUI_RECT* pRect, const char GUI_UNI_PTR * s, int MaxNumChars) {
+ 810   1        int xMax      = 0;
+ 811   1        int NumLines  = 0;
+ 812   1        int LineSizeX = 0;
+ 813   1        U16 Char;
+ 814   1        pRect->x0 = GUI_Context.DispPosX;
+ 815   1        pRect->y0 = GUI_Context.DispPosY;
+ 816   1        while (MaxNumChars--) {
+ 817   2          Char = GUI_UC__GetCharCodeInc(&s);
+ 818   2          if ((Char == '\n') || (Char == 0)) {
+ 819   3            if (LineSizeX > xMax) {
+ 820   4              xMax = LineSizeX;
+ 821   4            }
+ 822   3            LineSizeX = 0;
+ 823   3            NumLines++;
+ 824   3            if (!Char) {
+ 825   4              break;
+ 826   4            }
+ 827   3          } else {
+ 828   3            LineSizeX += GUI_GetCharDistX(Char);
+ 829   3          }
+ 830   2        }
+ 831   1        if (LineSizeX > xMax) {
+ 832   2          xMax = LineSizeX;
+ 833   2        }
+ 834   1        if (!NumLines) {
+ 835   2          NumLines = 1;
+ 836   2        }
+ 837   1        pRect->x1 = pRect->x0 + xMax - 1;
+ 838   1        pRect->y1 = pRect->y0 + GUI_Context.pAFont->YSize * NumLines - 1;
+ 839   1      }
+ 840          
+ 841          int GUI_GetDispPosX(void) {
+ 842   1        int r;
+ 843   1        GUI_LOCK();
+ 844   1        r = GUI_Context.DispPosX;
+ 845   1        GUI_UNLOCK();
+ 846   1        return r;
+ 847   1      }
+ 848          
+ 849          int GUI_GetDispPosY(void) {
+ 850   1        int r;
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 15  
+
+ 851   1        GUI_LOCK();
+ 852   1        r = GUI_Context.DispPosY;
+ 853   1        GUI_UNLOCK();
+ 854   1        return r;
+ 855   1      }
+ 856          
+ 857          int GUI__strlen(const char GUI_UNI_PTR * s) {
+ 858   1        int r = -1;
+ 859   1        if (s) {
+ 860   2          do {
+ 861   3            r++;
+ 862   3          } while (*s++);
+ 863   2        }
+ 864   1        return r;
+ 865   1      }
+ 866          
+ 867          int GUI_GetStringDistX(const char GUI_UNI_PTR * s) {
+ 868   1        return GUI__GetLineDistX(s, GUI__strlen(s));
+ 869   1      }
+ 870          
+ 871          void GUI_GetFontInfo(const GUI_FONT GUI_UNI_PTR * pFont, GUI_FONTINFO * pFontInfo) {
+ 872   1        GUI_LOCK();
+ 873   1        if (pFont == NULL) {
+ 874   2          pFont = GUI_Context.pAFont;
+ 875   2        }
+ 876   1        pFont->pfGetFontInfo(pFont, pFontInfo);
+ 877   1        GUI_UNLOCK();
+ 878   1      }
+ 879          
+ 880          int GUI_GetYSizeOfFont(const GUI_FONT GUI_UNI_PTR * pFont) {
+ 881   1        return pFont->YSize;
+ 882   1      }
+ 883          
+ 884          int GUI_GetYDistOfFont(const GUI_FONT GUI_UNI_PTR * pFont) {
+ 885   1        return pFont->YDist;
+ 886   1      }
+ 887          
+ 888          int GUI_GetTextAlign(void) {
+ 889   1        int r;
+ 890   1        GUI_LOCK();
+ 891   1        r = GUI_Context.TextAlign;
+ 892   1        GUI_UNLOCK();
+ 893   1        return r;
+ 894   1      }
+ 895          
+ 896          char GUI_IsInFont(const GUI_FONT GUI_UNI_PTR *pFont, U16 c) {
+ 897   1        if (pFont == NULL) {
+ 898   2          pFont = GUI_Context.pAFont;
+ 899   2        }
+ 900   1        return pFont->pfIsInFont(pFont, c);
+ 901   1      }
+ 902          
+ 903          void GUI_Update(void){
+ 904   1              SSD1306_UpdateScreen();
+ 905   1      }
+ 906          
+ 907          void GL_DrawBitmap(const GUI_BITMAP GUI_UNI_PTR * pBitmap, int x0, int y0) {
+ 908   1          LCD_DrawBitmap1BPP( x0,y0
+ 909   1                          ,pBitmap->XSize ,pBitmap->YSize
+ 910   1                          ,pBitmap->BytesPerLine
+ 911   1                          ,pBitmap->pData);
+ 912   1      }
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 16  
+
+ 913          
+ 914          void GUI_DrawBitmap(const GUI_BITMAP GUI_UNI_PTR * pBitmap, int x0, int y0) {
+ 915   1        GUI_LOCK();
+ 916   1        GL_DrawBitmap(pBitmap, x0, y0);
+ 917   1        GUI_UNLOCK();
+ 918   1      }
+ 919          
+ 920          #define RETURN_IF_Y_OUT() \
+ 921            if (y < GUI_Context.ClipRect.y0) return;             \
+ 922            if (y > GUI_Context.ClipRect.y1) return;
+ 923          
+ 924          #define RETURN_IF_X_OUT() \
+ 925            if (x < GUI_Context.ClipRect.x0) return;             \
+ 926            if (x > GUI_Context.ClipRect.x1) return;
+ 927          
+ 928          #define CLIP_X() \
+ 929            if (x0 < GUI_Context.ClipRect.x0) { x0 = GUI_Context.ClipRect.x0; } \
+ 930            if (x1 > GUI_Context.ClipRect.x1) { x1 = GUI_Context.ClipRect.x1; }
+ 931          
+ 932          #define CLIP_Y() \
+ 933            if (y0 < GUI_Context.ClipRect.y0) { y0 = GUI_Context.ClipRect.y0; } \
+ 934            if (y1 > GUI_Context.ClipRect.y1) { y1 = GUI_Context.ClipRect.y1; }
+ 935          
+ 936          void LCD_DrawPixel(int x, int y) {
+ 937   1        RETURN_IF_Y_OUT();
+ 938   1        RETURN_IF_X_OUT();
+ 939   1              SSD1306_DrawPixel(x, y, COLOR_F);
+ 940   1      }
+ 941          void LCD_DrawHLine(int x0, int y,  int x1) {
+ 942   1        /* Perform clipping and check if there is something to do */
+ 943   1        RETURN_IF_Y_OUT();
+ 944   1        CLIP_X();
+ 945   1        if (x1<x0)
+ 946   1          return;
+ 947   1        /* Call driver to draw */
+ 948   1              SSD1306_DrawLine(x0, y, x1, y, COLOR_F);
+ 949   1      }
+ 950          void LCD_DrawVLine(int x, int y0,  int y1) {
+ 951   1        /* Perform clipping and check if there is something to do */
+ 952   1        RETURN_IF_X_OUT();
+ 953   1        CLIP_Y();
+ 954   1        if (y1<y0)
+ 955   1          return;
+ 956   1        /* Call driver to draw */
+ 957   1              SSD1306_DrawLine(x, y0, x, y1, COLOR_F);
+ 958   1      }
+ 959          
+ 960          static void Draw8Point(int x0,int y0, int xoff, int yoff) {
+ 961   1        LCD_DrawPixel(x0+xoff,y0+yoff);
+ 962   1        LCD_DrawPixel(x0-xoff,y0+yoff);
+ 963   1        LCD_DrawPixel(x0+yoff,y0+xoff);
+ 964   1        LCD_DrawPixel(x0+yoff,y0-xoff);
+ 965   1        if (yoff) {
+ 966   2          LCD_DrawPixel(x0+xoff,y0-yoff);
+ 967   2          LCD_DrawPixel(x0-xoff,y0-yoff);
+ 968   2          LCD_DrawPixel(x0-yoff,y0+xoff);
+ 969   2          LCD_DrawPixel(x0-yoff,y0-xoff);
+ 970   2        }
+ 971   1      }
+ 972          /*********************************************************************
+ 973          *
+ 974          *       GL_DrawCircle
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 17  
+
+ 975          */
+ 976          void GL_DrawCircle(int x0, int y0, int r) {
+ 977   1        I32 i;
+ 978   1        int imax = ((I32)((I32)r*707))/1000+1;
+ 979   1        I32 sqmax = (I32)r*(I32)r+(I32)r/2;
+ 980   1        I32 y=r;
+ 981   1        Draw8Point(x0,y0,r,0);
+ 982   1        for (i=1; i<= imax; i++) {
+ 983   2          if ((i*i+y*y) >sqmax) {
+ 984   3            Draw8Point(x0,y0,i,y);
+ 985   3            y--;
+ 986   3          }
+ 987   2          Draw8Point(x0,y0,i,y);
+ 988   2        }
+ 989   1      }
+ 990          
+ 991          /*********************************************************************
+ 992          *
+ 993          *       GUI_DrawCircle
+ 994          */
+ 995          void GUI_DrawCircle(int x0, int y0, int r) {
+ 996   1        GUI_LOCK();
+ 997   1          GL_DrawCircle( x0, y0, r);
+ 998   1        GUI_UNLOCK();
+ 999   1      }
+1000          
+1001          /*********************************************************************
+1002          *
+1003          *       GL_FillCircle
+1004          */
+1005          void GL_FillCircle(int x0, int y0, int r) {
+1006   1        I32 i;
+1007   1        int imax = ((I32)((I32)r*707))/1000+1;
+1008   1        I32 sqmax = (I32)r*(I32)r+(I32)r/2;
+1009   1        I32 x=r;
+1010   1        LCD_DrawHLine(x0-r,y0,x0+r);
+1011   1        for (i=1; i<= imax; i++) {
+1012   2          if ((i*i+x*x) >sqmax) {
+1013   3            /* draw lines from outside */
+1014   3            if (x>imax) {
+1015   4              LCD_DrawHLine (x0-i+1,y0+x, x0+i-1);
+1016   4              LCD_DrawHLine (x0-i+1,y0-x, x0+i-1);
+1017   4            }
+1018   3            x--;
+1019   3          }
+1020   2          /* draw lines from inside (center) */
+1021   2          LCD_DrawHLine(x0-x,y0+i, x0+x);
+1022   2          LCD_DrawHLine(x0-x,y0-i, x0+x);
+1023   2        }
+1024   1      }
+1025          
+1026          /*********************************************************************
+1027          *
+1028          *       GUI_FillCircle
+1029          */
+1030          void GUI_FillCircle(int x0, int y0, int r) {
+1031   1        GUI_LOCK();
+1032   1        GL_FillCircle(x0,y0,r);
+1033   1        GUI_UNLOCK();
+1034   1      }
+1035          
+1036          /*********************************************************************
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 18  
+
+1037          *
+1038          *       GL_FillEllipse
+1039          */
+1040          void GL_FillEllipse(int x0, int y0, int rx, int ry) {
+1041   1        I32 OutConst, Sum, SumY;
+1042   1        int x,y;
+1043   1        U32 _rx = rx;
+1044   1        U32 _ry = ry;
+1045   1        OutConst = _rx*_rx*_ry*_ry  /* Constant as explaint above */
+1046   1                  +(_rx*_rx*_ry>>1); /* To compensate for rounding */
+1047   1        x = rx;
+1048   1        for (y=0; y<=ry; y++) {
+1049   2          SumY =((I32)(rx*rx))*((I32)(y*y)); /* Does not change in loop */
+1050   2          while (Sum = SumY + ((I32)(ry*ry))*((I32)(x*x)),
+1051   2                 (x>0) && (Sum>OutConst))
+1052   2          {
+1053   3            x--;
+1054   3          }
+1055   2          LCD_DrawHLine(x0-x, y0+y, x0+x);
+1056   2          if (y)
+1057   2            LCD_DrawHLine(x0-x, y0-y, x0+x);
+1058   2        }
+1059   1      }
+1060          
+1061          /*********************************************************************
+1062          *
+1063          *       GUI_FillEllipse
+1064          */
+1065          void GUI_FillEllipse(int x0, int y0, int rx, int ry) {
+1066   1        GUI_LOCK();
+1067   1        GL_FillEllipse (x0,y0, rx, ry);
+1068   1        GUI_UNLOCK();
+1069   1      }
+1070          
+1071          /*********************************************************************
+1072          *
+1073          *       GL_DrawEllipse
+1074          */
+1075          void GL_DrawEllipse(int x0, int y0, int rx, int ry) {
+1076   1        I32 OutConst, Sum, SumY;
+1077   1        int x,y;
+1078   1        int xOld;
+1079   1        U32 _rx = rx;
+1080   1        U32 _ry = ry;
+1081   1        OutConst = _rx*_rx*_ry*_ry  /* Constant as explaint above */
+1082   1                  +(_rx*_rx*_ry>>1); /* To compensate for rounding */
+1083   1        xOld = x = rx;
+1084   1        for (y=0; y<=ry; y++) {
+1085   2          if (y==ry) {
+1086   3            x=0;
+1087   3          } else {
+1088   3            SumY =((I32)(rx*rx))*((I32)(y*y)); /* Does not change in loop */
+1089   3            while (Sum = SumY + ((I32)(ry*ry))*((I32)(x*x)),
+1090   3                   (x>0) && (Sum>OutConst)) x--;
+1091   3          }
+1092   2          /* Since we draw lines, we can not draw on the first
+1093   2              iteration
+1094   2          */
+1095   2          if (y) {
+1096   3            SSD1306_DrawLine(x0-xOld,y0-y+1,x0-x,y0-y, COLOR_F);
+1097   3            SSD1306_DrawLine(x0-xOld,y0+y-1,x0-x,y0+y, COLOR_F);
+1098   3            SSD1306_DrawLine(x0+xOld,y0-y+1,x0+x,y0-y, COLOR_F);
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 19  
+
+1099   3            SSD1306_DrawLine(x0+xOld,y0+y-1,x0+x,y0+y, COLOR_F);
+1100   3          }
+1101   2          xOld = x;
+1102   2        }
+1103   1      }
+1104          
+1105          /*********************************************************************
+1106          *
+1107          *       GUI_DrawEllipse
+1108          */
+1109          void GUI_DrawEllipse(int x0, int y0, int rx, int ry) {
+1110   1        GUI_LOCK();
+1111   1        GL_DrawEllipse(x0, y0, rx, ry);
+1112   1        GUI_UNLOCK();
+1113   1      }
+1114          
+1115          void GUI_DrawHLine(int y0, int x0, int x1) {
+1116   1        GUI_LOCK();
+1117   1        LCD_DrawHLine(x0, y0, x1);
+1118   1        GUI_UNLOCK();
+1119   1      }
+1120          
+1121          void GUI_DrawVLine(int x0, int y0, int y1) {
+1122   1        GUI_LOCK();
+1123   1        LCD_DrawVLine(x0, y0, y1);
+1124   1        GUI_UNLOCK();
+1125   1      }
+1126          
+1127          void GUI_DrawLine (int x0, int y0, int x1, int y1){
+1128   1        GUI_LOCK();
+1129   1        SSD1306_DrawLine(x0, y0, x1, y1, COLOR_F);
+1130   1        GUI_UNLOCK();
+1131   1      }
+1132          
+1133          void GUI_DrawPixel (int x, int y){
+1134   1              LCD_DrawPixel(x, y);
+1135   1      }
+1136          void GUI_DrawPoint (int x, int y, GUI_COLOR c){
+1137   1        RETURN_IF_Y_OUT();
+1138   1        RETURN_IF_X_OUT();
+1139   1              SSD1306_DrawPixel(x, y, c);
+1140   1      }
+1141          
+1142          static void _DrawRect(int x0, int y0, int x1, int y1) {
+1143   1        LCD_DrawHLine(x0, y0, x1);
+1144   1        LCD_DrawHLine(x0, y1, x1);
+1145   1        LCD_DrawVLine(x0, y0 + 1, y1 - 1);
+1146   1        LCD_DrawVLine(x1, y0 + 1, y1 - 1);
+1147   1      }
+1148          
+1149          /*********************************************************************
+1150          *
+1151          *       GUI_DrawRect
+1152          */
+1153          void GUI_DrawRect(int x0, int y0, int x1, int y1) {
+1154   1        GUI_LOCK();
+1155   1        _DrawRect(x0, y0, x1, y1);
+1156   1        GUI_UNLOCK();
+1157   1      }
+1158          
+1159          void GUI_FillRect(int x0, int y0, int x1, int y1) {int y;
+1160   1        GUI_LOCK();
+C51 COMPILER V9.60.0.0   GUI                                                               08/16/2022 23:36:36 PAGE 20  
+
+1161   1              
+1162   1              for (y = y0; y < y1; ++y)
+1163   1                      LCD_DrawHLine(x0, y, x1);
+1164   1      
+1165   1      //  SSD1306_DrawFilledRectangle(x0,y0,x1-x0,y1-y0, c);
+1166   1        GUI_UNLOCK();
+1167   1      }
+1168          
+1169          void GUI_SetColor(GUI_COLOR color) {
+1170   1        GUI_LOCK(); {
+1171   2          if (GUI_Context.DrawColor != color)
+1172   2                              GUI_Context.DrawColor = color;
+1173   2        } GUI_UNLOCK();
+1174   1      }
+1175          
+1176          GUI_COLOR GUI_GetColor(void) {
+1177   1        GUI_COLOR r;
+1178   1        GUI_LOCK();
+1179   1        r = GUI_Context.DrawColor;
+1180   1        GUI_UNLOCK();
+1181   1        return r;
+1182   1      }
+1183          
+1184          /*************************** End of file ****************************/
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  8 ERROR(S)
