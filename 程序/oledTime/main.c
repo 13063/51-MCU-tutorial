@@ -40,6 +40,12 @@ void showTime()
 void setTime()			
 {
 	uchar hour=time.hour;
+	
+	
+	OLED_ShowChar(16,0,':',16);
+	OLED_ShowChar(40,0,':',16);
+	OLED_ShowChar(16,2,'-',16);
+	OLED_ShowChar(40,2,'-',16);
 	if(k==2)										//按键2按下
 	{
 		TimeSetSelect++;							//设置选择位加1
@@ -47,7 +53,6 @@ void setTime()
 	}
 	if(k==3)										//按键3按下
 	{
-		
 		(*(ptime+TimeSetSelect))++;
 		if(time.year>99){time.year=0;}				//年越界判断
 		if(time.mon>12){time.mon=1;}				//月越界判断
@@ -111,18 +116,18 @@ void setTime()
 	if(time.sec<0){time.sec=59;}					//秒越界判断
 
 	//更新显示，根据TimeSetSelect和TimeSetFlashFlag判断可完成闪烁功能
-	if(TimeSetSelect==0 && TimeSetFlashFlag==1){OLED_ShowString(1,2,"  ",16);}
-	else {OLED_ShowNum(1,2,time.year,2,16);}
-	if(TimeSetSelect==1 && TimeSetFlashFlag==1){OLED_ShowString(30,2,"  ",16);}
-	else {OLED_ShowNum(30,2,time.mon,2,16);}
-	if(TimeSetSelect==2 && TimeSetFlashFlag==1){OLED_ShowString(60,2,"  ",16);}
-	else {OLED_ShowNum(60,2,time.date,2,16);}
-	if(TimeSetSelect==3 && TimeSetFlashFlag==1){OLED_ShowString(1,0,"  ",16);}
-	else {OLED_ShowNum(1,0,time.hour,2,16);}
-	if(TimeSetSelect==4 && TimeSetFlashFlag==1){OLED_ShowString(30,0,"  ",16);}
-	else {OLED_ShowNum(30,0,time.min,2,16);}
-	if(TimeSetSelect==5 && TimeSetFlashFlag==1){OLED_ShowString(60,0,"  ",16);}
-	else {OLED_ShowNum(60,0,time.sec,2,16);}
+	if(TimeSetSelect==0 && TimeSetFlashFlag==1){OLED_ShowString(0,2,"  ",16);}
+	else {OLED_ShowNum(0,2,time.year,2,16);}
+	if(TimeSetSelect==1 && TimeSetFlashFlag==1){OLED_ShowString(24,2,"  ",16);}
+	else {OLED_ShowNum(24,2,time.mon,2,16);}
+	if(TimeSetSelect==2 && TimeSetFlashFlag==1){OLED_ShowString(48,2,"  ",16);}
+	else {OLED_ShowNum(48,2,time.date,2,16);}
+	if(TimeSetSelect==3 && TimeSetFlashFlag==1){OLED_ShowString(0,0,"  ",16);}
+	else {OLED_ShowNum(0,0,time.hour,2,16);}
+	if(TimeSetSelect==4 && TimeSetFlashFlag==1){OLED_ShowString(24,0,"  ",16);}
+	else {OLED_ShowNum(24,0,time.min,2,16);}
+	if(TimeSetSelect==5 && TimeSetFlashFlag==1){OLED_ShowString(48,0,"  ",16);}
+	else {OLED_ShowNum(48,0,time.sec,2,16);}
 }
 
 
