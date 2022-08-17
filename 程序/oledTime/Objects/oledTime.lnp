@@ -1,0 +1,8 @@
+".\Objects\main.obj",
+".\Objects\ds1302.obj",
+".\Objects\key.obj",
+".\Objects\public.obj",
+".\Objects\ssd1306.obj",
+".\Objects\iic.obj" 
+TO ".\Objects\oledTime" 
+PRINT(".\Listings\oledTime.m51") RAMSIZE(256) 

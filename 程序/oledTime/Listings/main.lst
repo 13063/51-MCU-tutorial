@@ -1,0 +1,231 @@
+C51 COMPILER V9.60.0.0   MAIN                                                              08/17/2022 18:14:38 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\EE\32\C51\BIN\C51.EXE main.c LARGE OPTIMIZE(8,SPEED) BROWSE INCDIR(.\DRIVERS;.\src) DEBUG OBJECT
+                    -EXTEND PRINT(.\Listings\main.lst) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <ds1302.H>
+   2          #include <public.H>
+   3          #include <key.H>
+   4          #include <ssd1306.H>
+   5          
+   6          uchar k,TimeSetSelect,TimeSetFlashFlag;
+   7          uchar MODE=0;
+   8          struct RTCtime time;
+   9          struct RTCtime* p;
+  10          void  setTime();
+  11          void showTime();
+  12          void Timer0Init(void);
+  13          void Timer0_Routine();
+  14          uchar i;
+  15          uchar *pti;                                                                     //指向存储变量的指针
+  16          uchar *ptime;                                                                   //指向全局变量的指针
+  17          struct RTCtime ti;                                                              //存储变量用于修改
+  18          
+  19          
+  20          void showTime()
+  21          {
+  22   1              
+  23   1              ti=ds1302ReadTime();
+  24   1              
+  25   1              //字宽8，高16
+  26   1              OLED_ShowNum(0,0,ti.hour,2,16);                                 //显示时
+  27   1              OLED_ShowChar(16,0,':',16);
+  28   1              OLED_ShowNum(24,0,ti.min,2,16);                                 //显示分
+  29   1              OLED_ShowChar(40,0,':',16);
+  30   1              OLED_ShowNum(48,0,ti.sec,2,16);                                 //显示秒
+  31   1              
+  32   1              OLED_ShowNum(0,2,ti.year,2,16);                                 //显示年
+  33   1              OLED_ShowChar(16,2,'-',16);
+  34   1              OLED_ShowNum(24,2,ti.mon,2,16);                                 //显示月
+  35   1              OLED_ShowChar(40,2,'-',16);
+  36   1              OLED_ShowNum(48,2,ti.date,2,16);                                //显示日
+  37   1      }
+  38          
+  39          ///////修改全局变量time////////
+  40          void setTime()                  
+  41          {
+  42   1              uchar hour=time.hour;
+  43   1              if(k==2)                                                                                //按键2按下
+  44   1              {
+  45   2                      TimeSetSelect++;                                                        //设置选择位加1
+  46   2                      TimeSetSelect%=6;                                                       //越界清零
+  47   2              }
+  48   1              if(k==3)                                                                                //按键3按下
+  49   1              {
+  50   2                      
+  51   2                      (*(ptime+TimeSetSelect))++;
+  52   2                      if(time.year>99){time.year=0;}                          //年越界判断
+  53   2                      if(time.mon>12){time.mon=1;}                            //月越界判断
+  54   2                      if( time.mon==1 || time.mon==3 || time.mon==5 || time.mon==7 || 
+C51 COMPILER V9.60.0.0   MAIN                                                              08/17/2022 18:14:38 PAGE 2   
+
+  55   2                              time.mon==8 || time.mon==10 || time.mon==12)//日越界判断
+  56   2                      {
+  57   3                              if(time.date>31){time.date=1;}                  //大月
+  58   3                      }
+  59   2                      else if(time.mon==4 || time.mon==6 || time.mon==9 || time.mon==11)
+  60   2                      {
+  61   3                              if(time.date>30){time.date=1;}                  //小月
+  62   3                      }
+  63   2                      else if(time.mon==2)
+  64   2                      {
+  65   3                              if(time.year%4==0)
+  66   3                              {
+  67   4                                      if(time.date>29){time.date=1;}          //闰年2月
+  68   4                              }
+  69   3                              else
+  70   3                              {
+  71   4                                      if(time.date>28){time.date=1;}          //平年2月
+  72   4                              }
+  73   3                      }
+  74   2                      
+  75   2                      if(time.hour>23){time.hour=0;}                          //时越界判断
+  76   2                      if(time.min>59){time.min=0;}                            //分越界判断
+  77   2                      if(time.sec>59){time.sec=0;}                            //秒越界判断
+  78   2              }
+  79   1              if(k==4)//按键4按下
+  80   1              {
+  81   2                      (*(ptime+TimeSetSelect))--;                                     //时间设置位数值减1
+  82   2                      if(time.year<0){time.year=99;}                          //年越界判断
+  83   2                      if(time.mon<1){time.mon=12;}                            //月越界判断
+  84   2                      if( time.mon==1 || time.mon==3 || time.mon==5 || time.mon==7 || 
+  85   2                              time.mon==8 || time.mon==10 || time.mon==12)//日越界判断
+  86   2                      {
+  87   3                              if(time.date<1){time.date=31;}                  //大月
+  88   3                              if(time.date>31){time.date=1;}
+  89   3                      }
+  90   2                      else if(time.mon==4 || time.mon==6 || time.mon==9 || time.mon==11)
+  91   2                      {
+  92   3                              if(time.date<1){time.date=30;}                  //小月
+  93   3                              if(time.date>30){time.date=1;}
+  94   3                      }
+  95   2                      else if(time.mon==2)
+  96   2                      {
+  97   3                              if(time.year%4==0)
+  98   3                              {
+  99   4                                      if(time.date<1){time.date=29;}          //闰年2月
+ 100   4                                      if(time.date>29){time.date=1;}
+ 101   4                              }
+ 102   3                              else
+ 103   3                              {
+ 104   4                                      if(time.date<1){time.date=28;}          //平年2月
+ 105   4                                      if(time.date>28){time.date=1;}
+ 106   4                              }
+ 107   3                      }
+ 108   2              }
+ 109   1              if(time.hour<0){time.hour=23;}                                  //时越界判断
+ 110   1              if(time.min<0){time.min=59;}                                    //分越界判断
+ 111   1              if(time.sec<0){time.sec=59;}                                    //秒越界判断
+ 112   1      
+ 113   1              //更新显示，根据TimeSetSelect和TimeSetFlashFlag判断可完成闪烁功能
+ 114   1              if(TimeSetSelect==0 && TimeSetFlashFlag==1){OLED_ShowString(1,2,"  ",16);}
+ 115   1              else {OLED_ShowNum(1,2,time.year,2,16);}
+ 116   1              if(TimeSetSelect==1 && TimeSetFlashFlag==1){OLED_ShowString(30,2,"  ",16);}
+C51 COMPILER V9.60.0.0   MAIN                                                              08/17/2022 18:14:38 PAGE 3   
+
+ 117   1              else {OLED_ShowNum(30,2,time.mon,2,16);}
+ 118   1              if(TimeSetSelect==2 && TimeSetFlashFlag==1){OLED_ShowString(60,2,"  ",16);}
+ 119   1              else {OLED_ShowNum(60,2,time.date,2,16);}
+ 120   1              if(TimeSetSelect==3 && TimeSetFlashFlag==1){OLED_ShowString(1,0,"  ",16);}
+ 121   1              else {OLED_ShowNum(1,0,time.hour,2,16);}
+ 122   1              if(TimeSetSelect==4 && TimeSetFlashFlag==1){OLED_ShowString(30,0,"  ",16);}
+ 123   1              else {OLED_ShowNum(30,0,time.min,2,16);}
+ 124   1              if(TimeSetSelect==5 && TimeSetFlashFlag==1){OLED_ShowString(60,0,"  ",16);}
+ 125   1              else {OLED_ShowNum(60,0,time.sec,2,16);}
+ 126   1      }
+ 127          
+ 128          
+ 129          
+ 130          
+ 131          
+ 132          void main()
+ 133          {
+ 134   1              OLED_Init();                                            //初始化
+ 135   1              OLED_Clear();
+ 136   1              ds1302Init();                                   //初始化1302
+ 137   1              Timer0Init();                                   //初始化定时器
+ 138   1      
+ 139   1              ti=ds1302ReadTime();                    //读取RTC时钟给ti结构体
+ 140   1                      
+ 141   1              ptime=&(time.year);
+ 142   1              pti=&(ti.year);
+ 143   1              
+ 144   1              for(i=0;i<7;i++)
+ 145   1              {
+ 146   2                      *(ptime+i)=*(pti+i);            //将读到的RTC时间给time结构体，相当于初始化time
+ 147   2              }
+ 148   1      //      OLED_ShowString(1,0,"hh",16);
+ 149   1      //      lcdShowString(1,1,"  -  -  ");  //静态字符初始化显示
+ 150   1      //      lcdShowString(2,1,"  :  :  ");
+ 151   1              while(1)
+ 152   1              {
+ 153   2                      
+ 154   2                      k=key();
+ 155   2                      if(k==1)
+ 156   2                      {
+ 157   3                              if(MODE==0)
+ 158   3                              {
+ 159   4                                      MODE=1;
+ 160   4                                      TimeSetSelect=0;
+ 161   4                              }                                               //功能切换
+ 162   3                              else if(MODE==1)
+ 163   3                              {
+ 164   4                                      MODE=0;
+ 165   4                                      ds1302SetTime(time);
+ 166   4                              }
+ 167   3                      }
+ 168   2      
+ 169   2                      switch(MODE)                            //根据不同的功能执行不同的函数
+ 170   2                      {
+ 171   3                              case 0:showTime();break;
+ 172   3                              case 1:setTime();break;
+ 173   3                      }
+ 174   2              }
+ 175   1      }
+ 176          
+ 177          void Timer0Init(void)
+ 178          {
+C51 COMPILER V9.60.0.0   MAIN                                                              08/17/2022 18:14:38 PAGE 4   
+
+ 179   1              TMOD &= 0xF0;                                   //设置定时器模式
+ 180   1              TMOD |= 0x01;                                   //设置定时器模式
+ 181   1              TL0 = 0x18;                                             //设置定时初值
+ 182   1              TH0 = 0xFC;                                             //设置定时初值
+ 183   1              TF0 = 0;                                                //清除TF0标志
+ 184   1              TR0 = 1;                                                //定时器0开始计时
+ 185   1              ET0=1;
+ 186   1              EA=1;
+ 187   1              PT0=0;
+ 188   1      }
+ 189          
+ 190          void Timer0_Routine() interrupt 1
+ 191          {
+ 192   1              static unsigned int T0Count;
+ 193   1              TL0 = 0x18;                                             //设置定时初值
+ 194   1              TH0 = 0xFC;                                             //设置定时初值
+ 195   1              T0Count++;
+ 196   1              if(T0Count>=200)                                //每500ms进入一次
+ 197   1              {
+ 198   2                      T0Count=0;
+ 199   2                      TimeSetFlashFlag=!TimeSetFlashFlag;//闪烁标志位取反
+ 200   2              }
+ 201   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1736    ----
+   CONSTANT SIZE    =      3    ----
+   XDATA SIZE       =     30       1
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
